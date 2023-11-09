@@ -53,7 +53,7 @@
     </collision>
   </link>
   <link name="${prefix}link_3_u">
-    <visual>
+    <!--<visual>
       <geometry>
         <mesh filename="package://motoman_sg650_support/meshes/sg650/visual/link_3_u.stl"/>
       </geometry>
@@ -63,7 +63,7 @@
       <geometry>
         <mesh filename="package://motoman_sg650_support/meshes/sg650/collision/link_3_u.stl"/>
       </geometry>
-    </collision>
+    </collision>-->
   </link>
   <link name="${prefix}link_4_r">
     <visual>
