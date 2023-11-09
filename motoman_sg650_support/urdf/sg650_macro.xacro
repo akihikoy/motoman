@@ -21,7 +21,7 @@
     <visual>
       <geometry>
         <mesh filename="package://motoman_sg650_support/meshes/sg650/visual/link_1_s.stl"/>
-        <mesh filename="package://motoman_sg650_support/meshes/sg650/visual/link_1_s-cable.stl"/>
+        <!--<mesh filename="package://motoman_sg650_support/meshes/sg650/visual/link_1_s-cable.stl"/>-->
       </geometry>
       <xacro:material_yaskawa_blue/>
     </visual>
@@ -30,6 +30,14 @@
         <mesh filename="package://motoman_sg650_support/meshes/sg650/collision/link_1_s.stl"/>
       </geometry>
     </collision>
+  </link>
+  <link name="${prefix}link_1_s_cable">
+    <visual>
+      <geometry>
+        <mesh filename="package://motoman_sg650_support/meshes/sg650/visual/link_1_s-cable.stl"/>
+      </geometry>
+      <xacro:material_yaskawa_blue/>
+    </visual>
   </link>
   <link name="${prefix}link_2_l">
     <visual>
@@ -80,6 +88,11 @@
     <origin xyz="0 0 0.225" rpy="0 0 0" />
     <axis xyz="0 0 1" />
     <limit lower="-2.3911" upper="2.3911" effort="100" velocity="7.85"/>
+  </joint>
+  <joint name="${prefix}joint_1_s_cable" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="${prefix}link_1_s"/>
+    <child link="${prefix}link_1_s_cable"/>
   </joint>
   <joint name="${prefix}joint_2_l" type="revolute">
     <parent link="${prefix}link_1_s"/>
