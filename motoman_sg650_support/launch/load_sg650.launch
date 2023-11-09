@@ -1,0 +1,4 @@
+
+<launch>
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find motoman_sg650_support)/urdf/sg650.xacro'" />
+</launch>
