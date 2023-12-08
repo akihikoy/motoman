@@ -110,7 +110,11 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const motoman_msgs::DynamicJoint
 
   if (msg->points.empty())
   {
-    ROS_INFO("Empty trajectory received while in IDLE state, nothing is done");
+    // ROS_INFO("Empty trajectory received while in IDLE state, nothing is done");
+    ROS_INFO("Empty trajectory received, canceling current trajectory");
+    this->mutex_.lock();
+    trajectoryStop();
+    this->mutex_.unlock();
     return;
   }
 
@@ -146,7 +150,11 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
 
   if (msg->points.empty())
   {
-    ROS_INFO("Empty trajectory received while in IDLE state, nothing is done");
+    // ROS_INFO("Empty trajectory received while in IDLE state, nothing is done");
+    ROS_INFO("Empty trajectory received, canceling current trajectory");
+    this->mutex_.lock();
+    trajectoryStop();
+    this->mutex_.unlock();
     return;
   }
 
