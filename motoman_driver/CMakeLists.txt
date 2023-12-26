@@ -231,6 +231,14 @@ target_link_libraries(${PROJECT_NAME}_joint_trajectory_action
   motoman_industrial_robot_client
   ${catkin_LIBRARIES})
 
+add_executable(${PROJECT_NAME}_joint_trajectory_action_single
+  src/joint_trajectory_action_single_node.cpp
+  src/industrial_robot_client/joint_trajectory_action_single.cpp)
+target_link_libraries(${PROJECT_NAME}_joint_trajectory_action_single
+  industrial_robot_client
+  motoman_industrial_robot_client
+  ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##
