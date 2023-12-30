@@ -97,13 +97,22 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const motoman_msgs::DynamicJoint
   ROS_DEBUG("Current state is: %d", state);
   if (TransferStates::IDLE != state)
   {
+    bool is_err(false);
+    std::string err_msg("");
     if (msg->points.empty())
       ROS_INFO("Empty trajectory received, canceling current trajectory");
     else
-      ROS_ERROR("Trajectory splicing not yet implemented, stopping current motion.");
+    {
+      is_err = true;
+      err_msg = "Trajectory splicing not yet implemented, stopping current motion.";
+      ROS_ERROR_STREAM(err_msg);
+    }
 
     this->mutex_.lock();
     trajectoryStop();
+    trajectory_stopped_ = true;
+    trajectory_rejected_ = is_err;
+    trajectory_rejected_error_msg_ = err_msg;
     this->mutex_.unlock();
     return;
   }
@@ -114,6 +123,9 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const motoman_msgs::DynamicJoint
     ROS_INFO("Empty trajectory received, canceling current trajectory");
     this->mutex_.lock();
     trajectoryStop();
+    trajectory_stopped_ = true;
+    trajectory_rejected_ = false;
+    trajectory_rejected_error_msg_ = "";
     this->mutex_.unlock();
     return;
   }
@@ -121,10 +133,22 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const motoman_msgs::DynamicJoint
   // calc new trajectory
   std::vector<SimpleMessage> new_traj_msgs;
   if (!trajectory_to_msgs(msg, &new_traj_msgs))
+  {
+    this->mutex_.lock();
+    trajectory_stopped_ = false;
+    trajectory_rejected_ = true;
+    trajectory_rejected_error_msg_ = "Failed to convert a trajectory to messages.";
+    this->mutex_.unlock();
     return;
+  }
 
   // send command messages to robot
   send_to_robot(new_traj_msgs);
+  this->mutex_.lock();
+  trajectory_stopped_ = false;
+  trajectory_rejected_ = false;
+  trajectory_rejected_error_msg_ = "";
+  this->mutex_.unlock();
 }
 
 void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTrajectoryConstPtr &msg)
@@ -137,13 +161,22 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
   ROS_DEBUG("Current state is: %d", state);
   if (TransferStates::IDLE != state)
   {
+    bool is_err(false);
+    std::string err_msg("");
     if (msg->points.empty())
       ROS_INFO("Empty trajectory received, canceling current trajectory");
     else
-      ROS_ERROR("Trajectory splicing not yet implemented, stopping current motion.");
+    {
+      is_err = true;
+      err_msg = "Trajectory splicing not yet implemented, stopping current motion.";
+      ROS_ERROR_STREAM(err_msg);
+    }
 
     this->mutex_.lock();
     trajectoryStop();
+    trajectory_stopped_ = true;
+    trajectory_rejected_ = is_err;
+    trajectory_rejected_error_msg_ = err_msg;
     this->mutex_.unlock();
     return;
   }
@@ -154,6 +187,9 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
     ROS_INFO("Empty trajectory received, canceling current trajectory");
     this->mutex_.lock();
     trajectoryStop();
+    trajectory_stopped_ = true;
+    trajectory_rejected_ = false;
+    trajectory_rejected_error_msg_ = "";
     this->mutex_.unlock();
     return;
   }
@@ -161,10 +197,22 @@ void JointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::JointTraj
   // calc new trajectory
   std::vector<SimpleMessage> new_traj_msgs;
   if (!trajectory_to_msgs(msg, &new_traj_msgs))
+  {
+    this->mutex_.lock();
+    trajectory_stopped_ = false;
+    trajectory_rejected_ = true;
+    trajectory_rejected_error_msg_ = "Failed to convert a trajectory to messages.";
+    this->mutex_.unlock();
     return;
+  }
 
   // send command messages to robot
   send_to_robot(new_traj_msgs);
+  this->mutex_.lock();
+  trajectory_stopped_ = false;
+  trajectory_rejected_ = false;
+  trajectory_rejected_error_msg_ = "";
+  this->mutex_.unlock();
 }
 
 bool JointTrajectoryStreamer::send_to_robot(const std::vector<SimpleMessage>& messages)

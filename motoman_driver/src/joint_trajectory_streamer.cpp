@@ -35,6 +35,7 @@
 #include "motoman_driver/simple_message/messages/joint_traj_pt_full_ex_message.h"
 #include "industrial_robot_client/utils.h"
 #include "industrial_utils/param_utils.h"
+#include "motoman_msgs/MotionStreamerState.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -88,6 +89,8 @@ bool MotomanJointTrajectoryStreamer::init(SmplMsgConnection* connection, const s
     motion_ctrl_map_[robot_id] = motion_ctrl;
   }
 
+  pub_motion_streamer_state_ =  node_.advertise<motoman_msgs::MotionStreamerState>("motion_streamer_state", 1);
+
   disabler_ = node_.advertiseService("robot_disable", &MotomanJointTrajectoryStreamer::disableRobotCB, this);
 
   enabler_ = node_.advertiseService("robot_enable", &MotomanJointTrajectoryStreamer::enableRobotCB, this);
@@ -112,6 +115,8 @@ bool MotomanJointTrajectoryStreamer::init(SmplMsgConnection* connection, const s
     node_.param("robot_id", robot_id_, 0);
 
   rtn &= motion_ctrl_.init(connection, robot_id_);
+
+  pub_motion_streamer_state_ =  node_.advertise<motoman_msgs::MotionStreamerState>("motion_streamer_state", 1);
 
   disabler_ = node_.advertiseService("robot_disable", &MotomanJointTrajectoryStreamer::disableRobotCB, this);
 
@@ -473,6 +478,26 @@ void MotomanJointTrajectoryStreamer::streamingThread()
         ROS_ERROR("Timeout connecting to robot controller.  Send new motion command to retry.");
         this->state_ = TransferStates::IDLE;
       }
+
+      this->mutex_.lock();
+      motoman_msgs::MotionStreamerState state_msg;
+      state_msg.trajectory_stopped = this->trajectory_stopped_;
+      state_msg.trajectory_rejected = this->trajectory_rejected_;
+      state_msg.trajectory_rejected_error_msg = this->trajectory_rejected_error_msg_;
+      state_msg.streamer_state = (int)this->state_;
+      state_msg.is_connected = is_connected;
+      state_msg.connect_retry_count = connectRetryCount;
+      state_msg.streaming_start = ros::Time(0);
+      state_msg.current_traj_size = 0;
+      state_msg.current_point = 0;
+      state_msg.is_last_msg_sent = false;
+      state_msg.last_reply_result = 0;
+      state_msg.last_reply_subcode = 0;
+      state_msg.trajectory_aborted = false;
+      state_msg.trajectory_aborted_error_msg = "";
+      this->mutex_.unlock();
+      this->pub_motion_streamer_state_.publish(state_msg);
+
       continue;
     }
 
@@ -480,7 +505,12 @@ void MotomanJointTrajectoryStreamer::streamingThread()
     this->mutex_.lock();
 
     SimpleMessage msg, tmpMsg, reply;
+    bool abort_traj = false;
+    std::string abort_traj_msg;
+    int last_reply_result = 0;
+    int last_reply_subcode = 0;
 
+    is_msg_sent = false;
     switch (this->state_)
     {
     case TransferStates::IDLE:
@@ -530,10 +560,14 @@ void MotomanJointTrajectoryStreamer::streamingThread()
         MotionReplyMessage reply_status;
         if (!reply_status.init(reply))
         {
-          ROS_ERROR("Aborting trajectory: Unable to parse JointTrajectoryPoint reply");
+          abort_traj_msg = "Aborting trajectory: Unable to parse JointTrajectoryPoint reply";
+          ROS_ERROR_STREAM(abort_traj_msg);
+          abort_traj = true;
           this->state_ = TransferStates::IDLE;
           break;
         }
+        last_reply_result = (int)reply_status.reply_.getResult();
+        last_reply_subcode = (int)reply_status.reply_.getSubcode();
 
         if (reply_status.reply_.getResult() == MotionReplyResults::SUCCESS)
         {
@@ -545,19 +579,43 @@ void MotomanJointTrajectoryStreamer::streamingThread()
           break;  // silently retry sending this point
         else
         {
-          ROS_ERROR_STREAM("Aborting Trajectory.  Failed to send point"
-                           << " (#" << this->current_point_ << "): "
-                           << MotomanMotionCtrl::getErrorString(reply_status.reply_));
+          std::stringstream ss;
+          ss<< "Aborting Trajectory.  Failed to send point"
+            << " (#" << this->current_point_ << "): "
+            << MotomanMotionCtrl::getErrorString(reply_status.reply_);
+          abort_traj_msg = ss.str();
+          ROS_ERROR_STREAM(abort_traj_msg);
+          abort_traj = true;
           this->state_ = TransferStates::IDLE;
           break;
         }
       }
       break;
     default:
-      ROS_ERROR("Joint trajectory streamer: unknown state");
+      abort_traj_msg = "Joint trajectory streamer: unknown state";
+      ROS_ERROR_STREAM(abort_traj_msg);
+      abort_traj = true;
       this->state_ = TransferStates::IDLE;
       break;
     }
+
+    motoman_msgs::MotionStreamerState state_msg;
+    state_msg.trajectory_stopped = this->trajectory_stopped_;
+    state_msg.trajectory_rejected = this->trajectory_rejected_;
+    state_msg.trajectory_rejected_error_msg = this->trajectory_rejected_error_msg_;
+    state_msg.streamer_state = (int)this->state_;
+    state_msg.is_connected = is_connected;
+    state_msg.connect_retry_count = connectRetryCount;
+    state_msg.streaming_start = this->streaming_start_;
+    state_msg.current_traj_size = this->current_traj_.size();
+    state_msg.current_point = this->current_point_;
+    state_msg.is_last_msg_sent = is_msg_sent;
+    state_msg.last_reply_result = last_reply_result;
+    state_msg.last_reply_subcode = last_reply_subcode;
+    state_msg.trajectory_aborted = abort_traj;
+    state_msg.trajectory_aborted_error_msg = abort_traj_msg;
+    this->pub_motion_streamer_state_.publish(state_msg);
+
     // this does not unlock smpl_msg_conx_mutex_, but the mutex from JointTrajectoryStreamer
     this->mutex_.unlock();
   }

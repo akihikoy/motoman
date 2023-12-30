@@ -136,6 +136,10 @@ protected:
   TransferState state_;
   ros::Time streaming_start_;
   int min_buffer_size_;
+
+  bool trajectory_stopped_;
+  bool trajectory_rejected_;
+  std::string trajectory_rejected_error_msg_;
 };
 
 }  // namespace joint_trajectory_streamer

@@ -18,6 +18,7 @@ add_message_files(
     DynamicJointState.msg
     DynamicJointTrajectory.msg
     DynamicJointTrajectoryFeedback.msg
+    MotionStreamerState.msg
 )
 
 add_service_files(
