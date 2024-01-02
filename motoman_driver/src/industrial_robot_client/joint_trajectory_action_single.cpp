@@ -62,6 +62,7 @@ JointTrajectoryAction::JointTrajectoryAction() :
   pub_trajectory_command_ = node_.advertise<trajectory_msgs::JointTrajectory>("joint_path_command", 1);
   sub_trajectory_state_ = node_.subscribe("feedback_states", 1, &JointTrajectoryAction::controllerStateCB, this);
   sub_robot_status_ = node_.subscribe("robot_status", 1, &JointTrajectoryAction::robotStatusCB, this);
+  sub_motion_streamer_state_ = node_.subscribe("motion_streamer_state", 1, &JointTrajectoryAction::motionStreamerStateCB, this);
 
   watchdog_timer_ = node_.createTimer(ros::Duration(WATCHDOG_PERIOD_), &JointTrajectoryAction::watchdog, this, true);
   action_server_.start();
@@ -75,6 +76,37 @@ void JointTrajectoryAction::robotStatusCB(const industrial_msgs::RobotStatusCons
 {
   last_robot_status_ = msg; //caching robot status for later use.
   has_moved_once_ = has_moved_once_ ? true : (last_robot_status_->in_motion.val == industrial_msgs::TriState::TRUE);
+
+  // Aborts the active goal if the controller is in an error state.
+  if (has_active_goal_)
+  {
+    if (last_robot_status_->in_error.val == industrial_msgs::TriState::TRUE)
+    {
+      ROS_ERROR_STREAM("Aborting trajectory because of the controller error: alarm="
+                      <<last_robot_status_->error_code);
+      abortGoal();
+    }
+  }
+}
+
+void JointTrajectoryAction::motionStreamerStateCB(const motoman_msgs::MotionStreamerStateConstPtr &msg)
+{
+  last_motion_streamer_state_ = msg; //caching motion streamer state for later use.
+
+  // Aborts the active goal if the controller rejected or aborted the trajectory.
+  if (has_active_goal_)
+  {
+    if (last_motion_streamer_state_->trajectory_rejected)
+    {
+      ROS_ERROR_STREAM("Aborting trajectory due to the streamer rejection; reason: "<<last_motion_streamer_state_->trajectory_rejected_error_msg);
+      abortGoal();
+    }
+    if (last_motion_streamer_state_->trajectory_aborted)
+    {
+      ROS_ERROR_STREAM("Aborting trajectory due to the streamer abort; reason: "<<last_motion_streamer_state_->trajectory_aborted_error_msg);
+      abortGoal();
+    }
+  }
 }
 
 void JointTrajectoryAction::watchdog(const ros::TimerEvent &e)

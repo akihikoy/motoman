@@ -39,6 +39,7 @@
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <control_msgs/FollowJointTrajectoryFeedback.h>
 #include <industrial_msgs/RobotStatus.h>
+#include "motoman_msgs/MotionStreamerState.h"
 
 namespace industrial_robot_client
 {
@@ -101,6 +102,11 @@ private:
    * robot driver).
    */
   ros::Subscriber sub_robot_status_;
+
+  /**
+   * \brief Subscribes to motion streamer state.
+   */
+  ros::Subscriber sub_motion_streamer_state_;
 
   /**
    * \brief Watchdog time used to fail the action request if the robot
@@ -166,6 +172,11 @@ private:
   industrial_msgs::RobotStatusConstPtr last_robot_status_;
 
   /**
+   * \brief Cache of the last subscribed motion streamer state message
+   */
+  motoman_msgs::MotionStreamerStateConstPtr last_motion_streamer_state_;
+
+  /**
    * \brief Time at which to start checking for completion of current
    * goal, if one is active
    */
@@ -217,6 +228,14 @@ private:
    *
    */
   void robotStatusCB(const industrial_msgs::RobotStatusConstPtr &msg);
+
+  /**
+   * \brief Motion streamer state callback
+   *
+   * \param msg motion streamer state message
+   *
+   */
+  void motionStreamerStateCB(const motoman_msgs::MotionStreamerStateConstPtr &msg);
 
   /**
    * \brief Aborts the current action goal and sends a stop command
