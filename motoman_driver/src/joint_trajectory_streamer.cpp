@@ -481,6 +481,7 @@ void MotomanJointTrajectoryStreamer::streamingThread()
 
       this->mutex_.lock();
       motoman_msgs::MotionStreamerState state_msg;
+      state_msg.header.stamp = ros::Time::now();
       state_msg.trajectory_stopped = this->trajectory_stopped_;
       state_msg.trajectory_rejected = this->trajectory_rejected_;
       state_msg.trajectory_rejected_error_msg = this->trajectory_rejected_error_msg_;
@@ -600,6 +601,7 @@ void MotomanJointTrajectoryStreamer::streamingThread()
     }
 
     motoman_msgs::MotionStreamerState state_msg;
+    state_msg.header.stamp = ros::Time::now();
     state_msg.trajectory_stopped = this->trajectory_stopped_;
     state_msg.trajectory_rejected = this->trajectory_rejected_;
     state_msg.trajectory_rejected_error_msg = this->trajectory_rejected_error_msg_;
