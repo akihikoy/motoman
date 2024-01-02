@@ -501,6 +501,7 @@ void MotomanJointTrajectoryStreamer::streamingThread()
 
       continue;
     }
+    connectRetryCount = 0;
 
     // this does not lock smpl_msg_conx_mutex_, but the mutex from JointTrajectoryStreamer
     this->mutex_.lock();
